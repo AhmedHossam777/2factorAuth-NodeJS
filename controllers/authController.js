@@ -8,6 +8,13 @@ const {
   generateRefreshToken,
 } = require('../utils/generateTokens');
 
+const emailService = require('../utils/emailService');
+const {
+  generateOTP,
+  generateSecret,
+  verifyOTP,
+} = require('../utils/OTPServices');
+
 const register = async (req, res, next) => {
   const { username, email, password } = req.body;
   if (!username || !email || !password) {
@@ -57,4 +64,43 @@ const login = async (req, res, next) => {
   });
 };
 
-module.exports = { register, login };
+
+const secret = generateSecret();
+
+const forgetPassword = async (req, res, next) => {
+  const { email } = req.body;
+  if (!email) {
+    return res.status(400).json({ message: 'Please provide email' });
+  }
+  const user = await User.findOne({ email: email });
+  if (!user) {
+    return res.status(404).json({ message: 'User not found' });
+  }
+  const otp = generateOTP(secret);
+
+  await emailService.sendVerificationEmail(email, otp);
+
+  res.status(200).json({ message: 'OTP sent to your email'});
+};
+
+const resetPassword = async (req, res, next) => {
+  const { email, otp, password } = req.body;
+  if (!email || !otp || !password) {
+    return res.status(400).json({ message: 'Please provide all fields' });
+  }
+  const user = await User.findOne({ email: email });
+  if (!user) {
+    return res.status(404).json({ message: 'User not found' });
+  }
+
+
+  const isVerified = verifyOTP(otp, secret);
+  if (!isVerified) {
+    return res.status(500).json({ message: 'Error in generating OTP' });
+  }
+  user.password = password;
+  await user.save();
+  res.status(200).json({ message: 'Password reset successful' });
+};
+
+module.exports = { register, login, forgetPassword, resetPassword };
