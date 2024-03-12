@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
+const validator = require('validator');
 
 const userSchema = new mongoose.Schema(
   {
@@ -12,10 +12,13 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Please provide an email'],
       unique: true,
+      trim: true,
+      validator: [validator.isEmail, 'Please provide a valid email'],
     },
     password: {
       type: String,
       required: [true, 'Please provide a password'],
+      select: false,
     },
   },
   { timestamps: true, validateBeforeSave: true, toJSON: { virtuals: true } }
@@ -26,8 +29,6 @@ userSchema.pre('save', async function (next) {
   this.password = await bcrypt.hash(this.password, 12);
   next();
 });
-
-
 
 userSchema.methods.correctPassword = async function (
   candidatePassword,

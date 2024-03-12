@@ -1,0 +1,1 @@
+const OTP = require('../model/Otp');
